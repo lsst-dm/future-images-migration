@@ -1,0 +1,30 @@
+datastore:
+  cls: lsst.daf.butler.datastores.fileDatastore.FileDatastore
+  records:
+    table: file_datastore_records
+  root: <butlerRoot>
+registry:
+  db: postgresql://usdf-butler-dp2-prep-db-tx.sdf.slac.stanford.edu:5432/lsstdb1
+  managers:
+    attributes: lsst.daf.butler.registry.attributes.DefaultButlerAttributeManager
+    collections: lsst.daf.butler.registry.collections.synthIntKey.SynthIntKeyCollectionManager
+    datasets:
+      cls: lsst.daf.butler.registry.datasets.byDimensions.ByDimensionsDatasetRecordStorageManagerUUID
+      config:
+        overrides:
+          legacy_visit_image:
+            rename: visit_image
+          visit_image:
+            rename: future_visit_image
+          legacy_difference_image:
+            rename: difference_image
+          difference_image:
+            rename: future_difference_image
+          legacy_deep_coadd:
+            rename: deep_coadd
+          deep_coadd:
+            rename: future_deep_coadd
+    datastores: lsst.daf.butler.registry.bridge.monolithic.MonolithicDatastoreRegistryBridgeManager
+    dimensions: lsst.daf.butler.registry.dimensions.static.StaticDimensionRecordStorageManager
+    opaque: lsst.daf.butler.registry.opaque.ByNameOpaqueTableStorageManager
+  namespace: dp2_prep
