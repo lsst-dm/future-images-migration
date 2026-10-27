@@ -1,0 +1,19 @@
+datastore:
+  cls: lsst.daf.butler.datastores.chainedDatastore.ChainedDatastore
+  datastores:
+    - cls: lsst.daf.butler.datastores.fileDatastore.FileDatastore
+      records:
+        table: file_datastore_records
+      root: <butlerRoot>
+    - cls: lsst.analysis.tools.interfaces.datastore.SasquatchDatastore
+      restProxyUrl: https://usdf-rsp-dev.slac.stanford.edu/sasquatch-rest-proxy
+      namespace: lsst.dm
+registry:
+  db: sqlite:///<butlerRoot>/dp2_prep.sqlite
+  managers:
+    attributes: lsst.daf.butler.registry.attributes.DefaultButlerAttributeManager
+    collections: lsst.daf.butler.registry.collections.synthIntKey.SynthIntKeyCollectionManager
+    datasets: lsst.daf.butler.registry.datasets.byDimensions.ByDimensionsDatasetRecordStorageManagerUUID
+    datastores: lsst.daf.butler.registry.bridge.monolithic.MonolithicDatastoreRegistryBridgeManager
+    dimensions: lsst.daf.butler.registry.dimensions.static.StaticDimensionRecordStorageManager
+    opaque: lsst.daf.butler.registry.opaque.ByNameOpaqueTableStorageManager

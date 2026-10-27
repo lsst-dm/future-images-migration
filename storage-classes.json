@@ -1,0 +1,13 @@
+{
+  "visit_image": "VisitImage",
+  "preliminary_visit_image": "VisitImage",
+  "difference_image": "DifferenceImage",
+  "deep_coadd": "CellCoadd",
+  "deep_coadd_cell_predetection": "CellCoadd",
+  "deconvolved_deep_coadd": "MaskedImageV2",
+  "template_coadd": "CellCoadd",
+  "template_detector": "DifferenceImage",
+  "template_matched": "DifferenceImage",
+  "difference_image_predetection": "DifferenceImage",
+  "difference_kernel": "ConvolutionKernel"
+}
