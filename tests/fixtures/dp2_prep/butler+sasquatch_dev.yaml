@@ -1,0 +1,47 @@
+datastore:
+  cls: lsst.daf.butler.datastores.chainedDatastore.ChainedDatastore
+  datastores:
+    - cls: lsst.daf.butler.datastores.fileDatastore.FileDatastore
+      records:
+        table: file_datastore_records
+      root: <butlerRoot>
+      formatters:
+        visit_image:
+          formatter: lsst.obs.base.formatters.fitsExposure.FitsExposureFormatter
+          parameters:
+            recipe: lossy16
+        deep_coadd:
+          formatter: lsst.obs.base.formatters.fitsExposure.FitsExposureFormatter
+          parameters:
+            recipe: lossy16
+        difference_image:
+          formatter: lsst.obs.base.formatters.fitsExposure.FitsExposureFormatter
+          parameters:
+            recipe: lossy16
+        template_coadd:
+          formatter: lsst.obs.base.formatters.fitsExposure.FitsExposureFormatter
+          parameters:
+            recipe: lossy16
+        template_detector:
+          formatter: lsst.images.formatters.GenericFormatter
+          parameters:
+            recipe: lossy16
+    - cls: lsst.analysis.tools.interfaces.datastore.SasquatchDatastore
+      restProxyUrl: https://usdf-rsp-dev.slac.stanford.edu/sasquatch-rest-proxy
+      namespace: lsst.dm
+registry:
+  db: sqlite:///<butlerRoot>/dp2_prep.sqlite
+  managers:
+    attributes: lsst.daf.butler.registry.attributes.DefaultButlerAttributeManager
+    collections: lsst.daf.butler.registry.collections.synthIntKey.SynthIntKeyCollectionManager
+    datasets:
+      cls: lsst.daf.butler.registry.datasets.byDimensions.ByDimensionsDatasetRecordStorageManagerUUID
+      config:
+        overrides:
+          legacy_visit_image:
+            rename: visit_image
+          visit_image:
+            rename: future_visit_image
+    datastores: lsst.daf.butler.registry.bridge.monolithic.MonolithicDatastoreRegistryBridgeManager
+    dimensions: lsst.daf.butler.registry.dimensions.static.StaticDimensionRecordStorageManager
+    opaque: lsst.daf.butler.registry.opaque.ByNameOpaqueTableStorageManager

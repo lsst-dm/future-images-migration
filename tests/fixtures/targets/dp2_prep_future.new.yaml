@@ -1,0 +1,50 @@
+datastore:
+  cls: lsst.daf.butler.datastores.fileDatastore.FileDatastore
+  records:
+    table: file_datastore_records
+  root: <butlerRoot>
+  formatters:
+    visit_image:
+      formatter: lsst.images.formatters.GenericFormatter
+      parameters:
+        recipe: lossy16
+    deep_coadd:
+      formatter: lsst.images.formatters.GenericFormatter
+      parameters:
+        recipe: lossy16
+    legacy_deep_coadd:
+      formatter: lsst.obs.base.formatters.fitsExposure.FitsExposureFormatter
+      parameters:
+        recipe: lossy16
+    difference_image:
+      formatter: lsst.images.formatters.GenericFormatter
+      parameters:
+        recipe: lossy16
+    template_coadd:
+      formatter: lsst.images.formatters.GenericFormatter
+      parameters:
+        recipe: lossy16
+    template_detector:
+      formatter: lsst.images.formatters.GenericFormatter
+      parameters:
+        recipe: lossy16
+registry:
+  db: sqlite:///<butlerRoot>/dp2_prep.sqlite
+  managers:
+    attributes: lsst.daf.butler.registry.attributes.DefaultButlerAttributeManager
+    collections: lsst.daf.butler.registry.collections.synthIntKey.SynthIntKeyCollectionManager
+    datasets:
+      cls: lsst.daf.butler.registry.datasets.byDimensions.ByDimensionsDatasetRecordStorageManagerUUID
+      config:
+        overrides:
+          template_coadd:
+            rename: legacy_template_coadd
+          future_template_coadd:
+            rename: template_coadd
+          source2:
+            rename: source
+          source:
+            rename: source_v1
+    datastores: lsst.daf.butler.registry.bridge.monolithic.MonolithicDatastoreRegistryBridgeManager
+    dimensions: lsst.daf.butler.registry.dimensions.static.StaticDimensionRecordStorageManager
+    opaque: lsst.daf.butler.registry.opaque.ByNameOpaqueTableStorageManager
