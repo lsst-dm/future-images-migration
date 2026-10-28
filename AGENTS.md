@@ -25,12 +25,12 @@ its `dataset_types` to know what to reverse.
 
 ## Domain model
 
-A migrated dataset type is a *pair of definitions* sharing one dimensions
+A migrated dataset type is a _pair of definitions_ sharing one dimensions
 set: a legacy definition (old storage classes, e.g. `ExposureF`) and a future
 definition (`VisitImage`, `CellCoadd`, `DifferenceImage`, …, per
 `storage-classes.json`). The pair lives as two rows in
 `<registry namespace>.dataset_type` of the registry database. Exactly one
-definition owns the un-prefixed *base name*:
+definition owns the un-prefixed _base name_:
 
 - **pre-arrangement** (`db_is_future=False`): row `X` = legacy definition,
   row `future_X` = future definition.
@@ -62,16 +62,16 @@ records, and datastore files survive a rename untouched.
 Per base name, these database row sets are all states that occur or have
 been agreed as legitimate:
 
-| state | rows | where |
-| --- | --- | --- |
-| L | `X` = legacy definition only | before the future definition was ever registered |
-| P0 | `X`, `future_X` | pre-arrangement |
-| P1 | `legacy_X`, `X` | post-arrangement (migration done) |
-| F | `X` = future definition only | families that never had a legacy definition (e.g. `embargo`) |
-| N | no rows | type not in this database |
+| state | rows                         | where                                                                         |
+| ----- | ---------------------------- | ----------------------------------------------------------------------------- |
+| L     | `X` = legacy definition only | before the future definition was ever registered                              |
+| P0    | `X`, `future_X`              | pre-arrangement                                                               |
+| P1    | `legacy_X`, `X`              | post-arrangement (migration done)                                             |
+| F     | `X` = future definition only | families that never had a legacy definition (e.g. `visit_image` in `embargo`) |
+| N     | no rows                      | type not in this database                                                     |
 
 A config may declare an override pair whose prefixed row is absent from the
-database (a *vestigial* pair, typically from configs copied between repo
+database (a _vestigial_ pair, typically from configs copied between repo
 families); whether a pair is live or vestigial is decided by the presence of
 the prefixed row in that database, not by the config.
 
@@ -85,7 +85,7 @@ directory (`butler.yaml`, `butler_future.yaml`, `butler+<variant>.yaml`,
 `DAF_BUTLER_REPOSITORY_INDEX` aliases. The primary legacy/future pair shares
 one file datastore (same `<butlerRoot>` root and records table).
 
-A *variant* is a member that differs from the primary pair in some
+A _variant_ is a member that differs from the primary pair in some
 configuration other than the dataset type overrides — the overrides must
 match the primary's exactly (enforced by `add-variant`'s baseline check and
 `analyze`'s mirror check), while other configuration differs. That other
@@ -96,8 +96,9 @@ a `SasquatchDatastore` on top of it.
 `init` and `add-variant` test group membership by raw `(registry.db,
 registry.namespace)` equality. Proxy and symlink indirection means two
 different URL spellings can address one database: raw equality can prove two
-configs *differ*, never that they *match*. Do not build logic that assumes
-unequal URL strings imply distinct databases.
+configs _differ_, never that they _match_. Do not build logic that assumes
+unequal URL strings imply distinct databases, unless the caller can override
+that logic in a straightforward, targeted way.
 
 ## Lifecycle and the script's guarantees
 
@@ -107,7 +108,7 @@ configs and the live database to classify each changed base name; `apply`
 executes. Two kinds of change:
 
 - **Config-only** (`is_db_migration=False`): the future member's `new` config
-  adds a future-facing pair; the database is untouched. This is the *interim*
+  adds a future-facing pair; the database is untouched. This is the _interim_
   stage that lets the future member resolve the future definition under the
   base name before the database is renamed.
 - **Database migration** (`is_db_migration=True`): the legacy member's `new`
@@ -140,9 +141,10 @@ Guarantees the script establishes and checks it assumes:
   apply are kept (inert and idempotent). Undo is wrong once data has been
   written through the migrated configuration.
 
-Policy: in new migrations the `future_X` row is registered *before* the
-interim config goes live, so the future member always resolves; the interim
-config otherwise points at a not-yet-existent row and the future member
+Policy: in new migrations the `future_X` row is registered _before_ the interim
+config goes live, using the butler client that does not have overrides for `X`
+(almost always the legacy member), so the future member always resolves; the
+interim config otherwise points at a not-yet-existent row and the future member
 cannot resolve that base until a later apply registers it. Wild repositories
 that skipped registration remain migratable — apply's registration at the
 database-migration step covers them.
@@ -169,7 +171,7 @@ configured pair in either the interim or the final arrangement. A pre-interim
 pair legitimately fails (the future member has no pair and the future
 definition is unresolvable).
 
-A missing legacy definition on a declared base means the *override* is the
+A missing legacy definition on a declared base means the _override_ is the
 problem, not the schema: with no legacy registration, the base name serves
 the future definition directly and the override pair is unnecessary.
 
@@ -182,18 +184,21 @@ shared-database invariant above. Their tests model a future member on a
 separate copied sqlite database, a topology `init` itself would reject.
 Treat them as historical context, not ground truth.
 
-## dp2_prep family state
+## Worked example: the dp2_prep family
 
-The production truth is the externals (S3/postgres, not in this repo); the
-stored files here are the repo-tracked view as of the last `init`/edit.
-Update this section each ticket.
+The per-ticket directories committed in this repo are its record of each
+migration; later tickets will add more. This section maps one such
+migration — the dp2_prep family — onto the state model. The production
+truth is the externals (S3/postgres, not in this repo); the stored files
+are the repo-tracked view as of the last `init`/edit. As of the
+`DM-56581a` stored files:
 
-| base | database | notes |
-| --- | --- | --- |
-| `visit_image`, `difference_image`, `deep_coadd` | P1 | migrated by the historical one-off; legacy-facing pairs in `butler.yaml` and `butler+sasquatch_dev.yaml` |
-| `deconvolved_deep_coadd` | P0 | interim live: future-facing pair in `dp2_prep_future*.old.yaml`, database rename pending |
-| `template_coadd` | P0/L | interim prepared: pair only in `*.new.yaml`, analyzed config-only with `is_registered=False`; whether apply ran is not recorded here |
-| remaining `storage-classes.json` names | — | pending future tickets |
+| base                                            | database | notes                                                                                                                                |
+| ----------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `visit_image`, `difference_image`, `deep_coadd` | P1       | migrated by the historical one-off; legacy-facing pairs in `butler.yaml` and `butler+sasquatch_dev.yaml`                             |
+| `deconvolved_deep_coadd`                        | P0       | interim live: future-facing pair in `dp2_prep_future*.old.yaml`, database rename pending                                             |
+| `template_coadd`                                | P0/L     | interim prepared: pair only in `*.new.yaml`, analyzed config-only with `is_registered=False`; whether apply ran is not recorded here |
+| remaining `storage-classes.json` names          | —        | listed in `storage-classes.json`, not yet migrated in any recorded ticket                                                            |
 
 ## Test conventions
 
