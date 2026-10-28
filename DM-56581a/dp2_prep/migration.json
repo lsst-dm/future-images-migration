@@ -1,0 +1,12 @@
+{
+  "legacy_repo": "dp2_prep",
+  "future_repo": "dp2_prep_future",
+  "ticket": "DM-56581a",
+  "dataset_types": {},
+  "variants": [
+    {
+      "legacy_repo": "dp2_prep+sasquatch_dev",
+      "future_repo": "dp2_prep_future+sasquatch_dev"
+    }
+  ]
+}

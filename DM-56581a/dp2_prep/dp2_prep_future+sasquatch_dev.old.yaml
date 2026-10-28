@@ -1,0 +1,27 @@
+datastore:
+  cls: lsst.daf.butler.datastores.chainedDatastore.ChainedDatastore
+  datastores:
+    - cls: lsst.daf.butler.datastores.fileDatastore.FileDatastore
+      records:
+        table: file_datastore_records
+      root: <butlerRoot>
+    - cls: lsst.analysis.tools.interfaces.datastore.SasquatchDatastore
+      restProxyUrl: https://usdf-rsp-dev.slac.stanford.edu/sasquatch-rest-proxy
+      namespace: lsst.dm
+registry:
+  db: postgresql://usdf-butler-dp2-prep-db-tx.sdf.slac.stanford.edu:5432/lsstdb1
+  managers:
+    attributes: lsst.daf.butler.registry.attributes.DefaultButlerAttributeManager
+    collections: lsst.daf.butler.registry.collections.synthIntKey.SynthIntKeyCollectionManager
+    datasets:
+      cls: lsst.daf.butler.registry.datasets.byDimensions.ByDimensionsDatasetRecordStorageManagerUUID
+      config:
+        overrides:
+          deconvolved_deep_coadd:
+            rename: legacy_deconvolved_deep_coadd
+          future_deconvolved_deep_coadd:
+            rename: deconvolved_deep_coadd
+    datastores: lsst.daf.butler.registry.bridge.monolithic.MonolithicDatastoreRegistryBridgeManager
+    dimensions: lsst.daf.butler.registry.dimensions.static.StaticDimensionRecordStorageManager
+    opaque: lsst.daf.butler.registry.opaque.ByNameOpaqueTableStorageManager
+  namespace: dp2_prep
