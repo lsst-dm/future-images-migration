@@ -753,7 +753,7 @@ def check_repos(legacy_repo: str, future_repo: str) -> list[str]:
             compare_dataset_type_attrs(
                 legacy_repo_future_type,
                 future_repo_future_type,
-                "dimensions",
+                "storageClass_name",
                 failures,
                 f"Inconsistent storage class for future variant of {base_name}",
             )

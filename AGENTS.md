@@ -162,8 +162,8 @@ present in `storage-classes.json`.
 verifier of a fully configured live pair, independent of any ticket. For
 every base declared by either member's overrides, both definitions must
 resolve in both members under that member's visible names; within a member
-the two definitions must agree on dimensions, and across members the legacy
-definitions must agree on storage class.
+the two definitions must agree on dimensions, and across members each
+definition must resolve to one storage class.
 
 It is not direction-aware: it probes `(base, future_X)` in the legacy member
 and `(legacy_X, base)` in the future member — the name set of a correctly
