@@ -16,6 +16,10 @@ registry:
             rename: legacy_deconvolved_deep_coadd
           future_deconvolved_deep_coadd:
             rename: deconvolved_deep_coadd
+          template_coadd:
+            rename: legacy_template_coadd
+          future_template_coadd:
+            rename: template_coadd
     datastores: lsst.daf.butler.registry.bridge.monolithic.MonolithicDatastoreRegistryBridgeManager
     dimensions: lsst.daf.butler.registry.dimensions.static.StaticDimensionRecordStorageManager
     opaque: lsst.daf.butler.registry.opaque.ByNameOpaqueTableStorageManager
