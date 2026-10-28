@@ -2,7 +2,14 @@
   "legacy_repo": "dp2_prep",
   "future_repo": "dp2_prep_future",
   "ticket": "DM-56581a",
-  "dataset_types": {},
+  "dataset_types": {
+    "template_coadd": {
+      "legacy_storage_class": "ExposureF",
+      "future_storage_class": "CellCoadd",
+      "is_registered": false,
+      "is_db_migration": false
+    }
+  },
   "variants": [
     {
       "legacy_repo": "dp2_prep+sasquatch_dev",
