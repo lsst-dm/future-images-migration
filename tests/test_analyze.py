@@ -10,10 +10,13 @@ from conftest import (
     DATA_DIR,
     FUTURE_REPO,
     REPO,
+    SHARED_DB,
     TICKET,
     MigrationRun,
     assert_rejected,
     canonical_new_state,
+    dataset_type_names,
+    execute_sql,
     run_migration,
     set_stored_config,
     stored_config,
@@ -91,11 +94,63 @@ def test_analyze_twice(tree) -> None:
 
 
 def test_legacy_subtraction(repo_pair) -> None:
-    """The legacy repo may not drop overrides it already has."""
+    """A legacy-side pair guarding a live row may not be dropped; its
+    vestigial siblings (base name registered, legacy_ row absent) drop as
+    config-only changes and are not flagged."""
     repo_pair.install_external("legacy", "legacy-new.yaml")
     assert run_migration(repo_pair.tmp_path, "init", TICKET, REPO).ok
     set_stored_config(repo_pair.tmp_path, REPO, "new", "legacy-old.yaml")
-    assert_rejected(analyze(repo_pair.tmp_path), "Unexpected legacy subtractions")
+    execute_sql(
+        repo_pair.repo_dir / SHARED_DB,
+        "UPDATE dataset_type SET name='legacy_visit_image' WHERE name='visit_image'",
+    )
+    run = analyze(repo_pair.tmp_path)
+    assert_rejected(run, "visit_image")
+    assert "difference_image" not in run.stderr, run.stderr
+    assert "deep_coadd" not in run.stderr, run.stderr
+
+
+def test_drops_unnecessary_override_pair(repo_pair) -> None:
+    """B2: legacy-facing pairs whose legacy_ row was never registered are
+    vestiges — dropping them analyzes to no dataset-type changes, and apply
+    only rewrites the external config."""
+    db = repo_pair.repo_dir / SHARED_DB
+    # Forge the future-only (F) arrangement for visit_image: the base name
+    # owns the future definition and no legacy_ row ever existed.
+    execute_sql(db, "DELETE FROM dataset_type WHERE name='visit_image'")
+    execute_sql(db, "UPDATE dataset_type SET name='visit_image' WHERE name='future_visit_image'")
+    repo_pair.install_external("legacy", "legacy-new.yaml")
+    assert run_migration(repo_pair.tmp_path, "init", TICKET, REPO).ok
+    set_stored_config(repo_pair.tmp_path, REPO, "new", "legacy-old.yaml")
+    names_before = dataset_type_names(REPO)
+    run = analyze(repo_pair.tmp_path)
+    assert run.ok, run.stderr
+    assert run.migration["dataset_types"] == {}
+    assert run_migration(repo_pair.tmp_path, "apply", TICKET).ok
+    assert dataset_type_names(REPO) == names_before
+    assert "legacy_visit_image" not in repo_pair.external("legacy").read_text()
+
+
+def test_drops_pair_for_unregistered_type(repo_pair) -> None:
+    """B1: a pair for a type with no row under any of its three names is a
+    config-only drop."""
+    config = yaml.safe_load((DATA_DIR / "legacy-old.yaml").read_text())
+    config["registry"]["managers"]["datasets"] = {
+        "cls": "lsst.daf.butler.registry.datasets.byDimensions"
+               ".ByDimensionsDatasetRecordStorageManagerUUID",
+        "config": {
+            "overrides": {
+                "legacy_bogus_image": {"rename": "bogus_image"},
+                "bogus_image": {"rename": "future_bogus_image"},
+            }
+        },
+    }
+    repo_pair.external("legacy").write_text(yaml.safe_dump(config))
+    assert run_migration(repo_pair.tmp_path, "init", TICKET, REPO).ok
+    set_stored_config(repo_pair.tmp_path, REPO, "new", "legacy-old.yaml")
+    run = analyze(repo_pair.tmp_path)
+    assert run.ok, run.stderr
+    assert run.migration["dataset_types"] == {}
 
 
 def test_missing_removal(tree) -> None:
@@ -109,7 +164,24 @@ def test_missing_removal(tree) -> None:
 def test_does_not_invert(repo_pair) -> None:
     """The override removed from the future repo must invert the one added
     to the legacy repo."""
-    repo_pair.install_external("future", "legacy-new.yaml")
+    # Put visit_image in the post-arrangement so the future member's
+    # legacy-facing pair guards a live row (a pre-arrangement one would be
+    # a droppable vestige); the other bases stay untouched.
+    db = repo_pair.repo_dir / SHARED_DB
+    execute_sql(db, "UPDATE dataset_type SET name='legacy_visit_image' WHERE name='visit_image'")
+    execute_sql(db, "UPDATE dataset_type SET name='visit_image' WHERE name='future_visit_image'")
+    config = yaml.safe_load((DATA_DIR / "future-old.yaml").read_text())
+    config["registry"]["managers"]["datasets"] = {
+        "cls": "lsst.daf.butler.registry.datasets.byDimensions"
+               ".ByDimensionsDatasetRecordStorageManagerUUID",
+        "config": {
+            "overrides": {
+                "legacy_visit_image": {"rename": "visit_image"},
+                "visit_image": {"rename": "future_visit_image"},
+            }
+        },
+    }
+    repo_pair.external("future").write_text(yaml.safe_dump(config))
     assert run_migration(repo_pair.tmp_path, "init", TICKET, REPO).ok
     set_stored_config(repo_pair.tmp_path, REPO, "new", "legacy-new.yaml")
     set_stored_config(repo_pair.tmp_path, FUTURE_REPO, "new", "future-new.yaml")

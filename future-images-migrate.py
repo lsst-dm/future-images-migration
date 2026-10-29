@@ -380,6 +380,40 @@ class RepoMigration(RepoPair):
             self.file_path(variant, "new").write_bytes(variant_config_data)
         self.variants.append(new_pair)
 
+    @staticmethod
+    def droppable_pairs(
+        butler: Butler, subtracted: dict[str, DatasetTypeOverride]
+    ) -> dict[str, DatasetTypeOverride]:
+        """Filter out override pairs whose removal is a config-only change.
+
+        A subtracted pair is droppable when the definition it protected
+        cannot exist in this database: no row under any of ``X``,
+        ``legacy_X``, or ``future_X`` (the type is not in this database at
+        all), or the pair ran in the ``db_is_future`` direction with row
+        ``X`` registered and ``legacy_X`` absent (the family never had the
+        legacy definition, so the base name serves the future definition
+        and the pair is a vestige of copied configs).  Membership comes
+        from the raw ``dataset_type`` table because the subtracted config's
+        own renames would distort ``get_dataset_type`` visibility.
+
+        Returns the live removals, which still require the existing
+        rejections or a paired database migration.
+        """
+        db = butler.registry._registry._db
+        table = f"{db.namespace}.dataset_type" if db.namespace else "dataset_type"
+        with db._engine.connect() as connection:
+            rows = {row[0] for row in connection.execute(sqlalchemy.text(f"SELECT name FROM {table}"))}
+        live: dict[str, DatasetTypeOverride] = {}
+        for base_name, override in subtracted.items():
+            vestigial = not rows & {base_name, f"legacy_{base_name}", f"future_{base_name}"} or (
+                override.db_is_future and base_name in rows and f"legacy_{base_name}" not in rows
+            )
+            if vestigial:
+                logging.info(f"Dropping unnecessary override pair for {base_name}.")
+            else:
+                live[base_name] = override
+        return live
+
     def analyze(self) -> None:
         """Analyze the configuration files in this migration, checking them
         for consistency and populating the list of dataset types that will be
@@ -395,14 +429,19 @@ class RepoMigration(RepoPair):
         future_additions, future_subtractions = self.diff_old_new(
             future_old_overrides, future_new_overrides, self.future_repo
         )
-        if legacy_subtractions:
-            raise ValueError(
-                f"Unexpected legacy subtractions in {self.legacy_repo}: {set(legacy_subtractions.keys())}."
-            )
         self.check_variant_overrides(legacy_old_overrides, future_old_overrides, "old")
         self.check_variant_overrides(legacy_new_overrides, future_new_overrides, "new")
         updated_dataset_types: dict[str, DatasetTypeMigration] = {}
         with Butler.from_config(self.legacy_repo) as legacy_butler:
+            # Dropping a vestigial pair is a config-only change; only live
+            # removals keep the rejections below.
+            legacy_subtractions = self.droppable_pairs(legacy_butler, legacy_subtractions)
+            future_subtractions = self.droppable_pairs(legacy_butler, future_subtractions)
+            if legacy_subtractions:
+                raise ValueError(
+                    f"Unexpected legacy subtractions in {self.legacy_repo}: "
+                    f"{set(legacy_subtractions.keys())}."
+                )
             # future_additions are config overrides in the future repo only
             # that don't affect the (shared) DB definition.
             for base_name, override in future_additions.items():

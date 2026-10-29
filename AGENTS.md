@@ -111,7 +111,8 @@ executes. Two kinds of change:
   adds a future-facing pair; the only database effect is registering a
   missing `future_X`, never a rename. This is the _interim_ stage that lets
   the future member resolve the future definition under the base name before
-  the database is renamed.
+  the database is renamed. Removing a vestigial override pair (see `analyze`)
+  is config-only as well, with no database effect at all.
 - **Database migration** (`is_db_migration=True`): the legacy member's `new`
   config adds a legacy-facing pair and the future member's pair is removed
   (required only if its old config had one — the interim can be skipped
@@ -154,12 +155,22 @@ included), and registers through the legacy member's client — the one
 without overrides for `X`. Hand registration uses the same client. Wild
 repositories that skipped registration remain migratable the same way.
 
-`analyze` rejects: incomplete or inconsistent override pairs; legacy-side
-subtractions; future-side removals not paired with a database migration;
-additions acting in the wrong direction; a future-only addition implying the
-database already post-arranges; future storage classes that disagree across
-selected migrations; and base names neither registered as `future_X` nor
-present in `storage-classes.json`.
+`analyze` classifies a subtracted override pair as a config-only drop (no
+`DatasetTypeMigration` entry, no rename — `apply` only rewrites externals)
+when the definition it protected cannot exist in the shared database: no
+row under any of `X`, `legacy_X`, or `future_X`, or the pair's direction
+is `db_is_future` with row `X` registered and `legacy_X` absent (a family
+that never had the legacy definition, so the base name serves the future
+definition and the pair is a vestige of copied configs). The membership
+check reads the raw `dataset_type` table: the subtracted config's own
+renames would distort `get_dataset_type` visibility.
+
+`analyze` rejects: incomplete or inconsistent override pairs; live
+legacy-side subtractions; live future-side removals not paired with a
+database migration; additions acting in the wrong direction; a future-only
+addition implying the database already post-arranges; future storage
+classes that disagree across selected migrations; and base names neither
+registered as `future_X` nor present in `storage-classes.json`.
 
 ## The `check` subcommand
 

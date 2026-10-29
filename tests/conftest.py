@@ -125,6 +125,20 @@ def dataset_type_names(alias: str) -> set[str]:
     return set(dataset_type_rows(alias))
 
 
+SHARED_DB = "dp2_prep.sqlite"
+"""File name of the fixture registry database shared by a group's members."""
+
+
+def execute_sql(db_path: Path, statement: str) -> None:
+    """Run raw SQL against a fixture sqlite database — the same table-level
+    access apply itself uses, reached directly to forge broken or edge
+    states.
+    """
+    engine = sqlalchemy.create_engine(f"sqlite:///{db_path}")
+    with engine.begin() as connection:
+        connection.execute(sqlalchemy.text(statement))
+
+
 class MigrationRun(NamedTuple):
     """Outcome of one ``run_migration`` invocation."""
 
