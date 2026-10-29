@@ -132,10 +132,11 @@ def test_apply_rejects_two_migrations_on_one_db(ready_group) -> None:
     assert dataset_type_names(REPO) == names_before
 
 
-def test_apply_registers_unregistered_and_skips_config_only(repo_pair) -> None:
+def test_apply_registers_unregistered_including_config_only(repo_pair) -> None:
     """apply registers future types that only storage-classes.json knows
-    about (then renames them like any other DB migration) and rewrites
-    config files for config-only entries without touching the database."""
+    about — database migrations rename them afterward, config-only entries
+    just gain the row their new config points at — and rewrites the config
+    files."""
     tmp = repo_pair.tmp_path
     repo_pair.register_types({"weird_thing": ("ExposureF", ("visit", "detector"))})
     register_dataset_types(
@@ -148,7 +149,7 @@ def test_apply_registers_unregistered_and_skips_config_only(repo_pair) -> None:
     assert run_migration(tmp, "init", TICKET, REPO).ok
     classes_path = tmp / "migrations" / "storage-classes.json"
     classes = json.loads(classes_path.read_text())
-    classes["weird_thing"] = "WeirdImage"
+    classes["weird_thing"] = "ExposureI"
     classes_path.write_text(json.dumps(classes))
     set_stored_config(tmp, REPO, "new", "legacy-new.yaml")
     future_new = yaml.safe_load(data_text("future-new.yaml"))
@@ -166,12 +167,14 @@ def test_apply_registers_unregistered_and_skips_config_only(repo_pair) -> None:
     assert apply_cmd(repo_pair).ok
     # With no pre-existing future_visit_image row to rename, the swap could
     # not have produced the base name unless apply registered it.
-    assert dataset_type_names(REPO) == APPLIED_NAMES | {"weird_thing"}
+    assert dataset_type_names(REPO) == APPLIED_NAMES | {"weird_thing", "future_weird_thing"}
     with Butler.from_config(REPO) as butler:
         assert butler.get_dataset_type("future_visit_image").storageClass_name == "VisitImage"
+        # The config-only entry's future type is registered under its raw
+        # name (the legacy member has no overrides to hide it).
+        assert butler.get_dataset_type("future_weird_thing").storageClass_name == "ExposureI"
     # A config-only entry never takes part in renames.
     assert "legacy_weird_thing" not in dataset_type_names(REPO)
-    assert "future_weird_thing" not in dataset_type_names(REPO)
     assert ButlerConfig(FUTURE_REPO).configFile.read() == (
         stored_config(tmp, FUTURE_REPO, "new").read_bytes()
     )

@@ -108,20 +108,26 @@ configs and the live database to classify each changed base name; `apply`
 executes. Two kinds of change:
 
 - **Config-only** (`is_db_migration=False`): the future member's `new` config
-  adds a future-facing pair; the database is untouched. This is the _interim_
-  stage that lets the future member resolve the future definition under the
-  base name before the database is renamed.
+  adds a future-facing pair; the only database effect is registering a
+  missing `future_X`, never a rename. This is the _interim_ stage that lets
+  the future member resolve the future definition under the base name before
+  the database is renamed.
 - **Database migration** (`is_db_migration=True`): the legacy member's `new`
   config adds a legacy-facing pair and the future member's pair is removed
   (required only if its old config had one — the interim can be skipped
-  entirely when the future member is still override-free). `apply` then, in
-  one `engine.begin()` transaction per database: registers any missing
-  `future_X` (dimensions copied from the legacy definition), renames
-  `X → legacy_X` then `future_X → X` (each rename must match exactly one
-  row), and rewrites each member's external config from its stored `new`
-  file. The file copies are outside the transaction: on failure, `apply`
-  restores every already-copied external from its stored `old` copy before
-  the transaction rolls back alone.
+  entirely when the future member is still override-free).
+
+Every apply first registers each migrated base whose `future_X` row is
+missing: storage class from `storage-classes.json` — resolved through the
+`StorageClassFactory`, so the class must exist in the environment running
+apply — with dimensions copied from the legacy definition. Database
+migrations then, in one `engine.begin()`
+transaction per database, rename `X → legacy_X` then `future_X → X` (each
+rename must match exactly one row) and rewrite each member's external config
+from its stored `new` file — config-only applies rewrite configs only. The
+file copies are outside the transaction: on failure, `apply` restores every
+already-copied external from its stored `old` copy before the transaction
+rolls back alone.
 
 Guarantees the script establishes and checks it assumes:
 
@@ -132,7 +138,7 @@ Guarantees the script establishes and checks it assumes:
   #1..#k-1 committed: apply across databases is not atomic; sequence
   independent groups with `--repo`.
 - After a successful apply, every external byte-equals its stored `new`
-  file, and the database is exactly in the post-arrangement.
+  file, and each database-migrated base is exactly in the post-arrangement.
 - `apply` never writes `migration.json`; re-analysis during apply is
   in-memory only.
 - `apply --undo` is valid only immediately after `apply`: it requires
@@ -141,13 +147,12 @@ Guarantees the script establishes and checks it assumes:
   apply are kept (inert and idempotent). Undo is wrong once data has been
   written through the migrated configuration.
 
-Policy: in new migrations the `future_X` row is registered _before_ the interim
-config goes live, using the butler client that does not have overrides for `X`
-(almost always the legacy member), so the future member always resolves; the
-interim config otherwise points at a not-yet-existent row and the future member
-cannot resolve that base until a later apply registers it. Wild repositories
-that skipped registration remain migratable — apply's registration at the
-database-migration step covers them.
+Policy: the `future_X` row is registered _before_ the interim config goes
+live, so the future member always resolves. `apply` implements this itself:
+its registration pass precedes every config rewrite (config-only applies
+included), and registers through the legacy member's client — the one
+without overrides for `X`. Hand registration uses the same client. Wild
+repositories that skipped registration remain migratable the same way.
 
 `analyze` rejects: incomplete or inconsistent override pairs; legacy-side
 subtractions; future-side removals not paired with a database migration;

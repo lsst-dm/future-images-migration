@@ -466,14 +466,15 @@ class RepoMigration(RepoPair):
 
     def _register_future_types(self) -> None:
         """Register the future dataset types that are only in
-        storage-classes.json; idempotent, so registrations left by a failed
-        apply are harmless.
+        storage-classes.json, config-only entries as well as database
+        migrations; idempotent, so registrations left by a failed apply are
+        harmless.
         """
-        if not any(dt.is_db_migration and not dt.is_registered for dt in self.dataset_types.values()):
+        if all(dataset_type.is_registered for dataset_type in self.dataset_types.values()):
             return
         with Butler.from_config(self.legacy_repo, writeable=True) as butler:
             for base_name, dataset_type in self.dataset_types.items():
-                if dataset_type.is_db_migration and not dataset_type.is_registered:
+                if not dataset_type.is_registered:
                     legacy_dataset_type = butler.get_dataset_type(base_name)
                     butler.registry.registerDatasetType(
                         DatasetType(
