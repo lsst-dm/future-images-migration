@@ -389,24 +389,35 @@ class RepoMigration(RepoPair):
         A subtracted pair is droppable when the definition it protected
         cannot exist in this database: no row under any of ``X``,
         ``legacy_X``, or ``future_X`` (the type is not in this database at
-        all), or the pair ran in the ``db_is_future`` direction with row
-        ``X`` registered and ``legacy_X`` absent (the family never had the
-        legacy definition, so the base name serves the future definition
-        and the pair is a vestige of copied configs).  Membership comes
-        from the raw ``dataset_type`` table because the subtracted config's
-        own renames would distort ``get_dataset_type`` visibility.
+        all), or the pair ran in the ``db_is_future`` direction with ``X``
+        resolvable and ``legacy_X`` not.  That covers the family that never
+        had the legacy definition (a vestige of copied configs) as well as
+        the completed migration whose rename hides ``legacy_X`` from this
+        probe — in both cases the correct post-arrangement config for the
+        future member is no pair, so dropping is the fix.
+
+        Probing through the legacy member's client suffices: a legacy-side
+        pair is installed only by a completed migration and its subtraction
+        is rejected outright, so only future-side pairs are classified here.
 
         Returns the live removals, which still require the existing
         rejections or a paired database migration.
         """
-        db = butler.registry._registry._db
-        table = f"{db.namespace}.dataset_type" if db.namespace else "dataset_type"
-        with db._engine.connect() as connection:
-            rows = {row[0] for row in connection.execute(sqlalchemy.text(f"SELECT name FROM {table}"))}
+
+        def resolves(name: str) -> bool:
+            try:
+                butler.get_dataset_type(name)
+            except MissingDatasetTypeError:
+                return False
+            return True
+
         live: dict[str, DatasetTypeOverride] = {}
         for base_name, override in subtracted.items():
-            vestigial = not rows & {base_name, f"legacy_{base_name}", f"future_{base_name}"} or (
-                override.db_is_future and base_name in rows and f"legacy_{base_name}" not in rows
+            vestigial = not any(
+                resolves(name)
+                for name in (base_name, f"legacy_{base_name}", f"future_{base_name}")
+            ) or (
+                override.db_is_future and resolves(base_name) and not resolves(f"legacy_{base_name}")
             )
             if vestigial:
                 logging.info(f"Dropping unnecessary override pair for {base_name}.")
@@ -429,19 +440,17 @@ class RepoMigration(RepoPair):
         future_additions, future_subtractions = self.diff_old_new(
             future_old_overrides, future_new_overrides, self.future_repo
         )
+        if legacy_subtractions:
+            raise ValueError(
+                f"Unexpected legacy subtractions in {self.legacy_repo}: {set(legacy_subtractions.keys())}."
+            )
         self.check_variant_overrides(legacy_old_overrides, future_old_overrides, "old")
         self.check_variant_overrides(legacy_new_overrides, future_new_overrides, "new")
         updated_dataset_types: dict[str, DatasetTypeMigration] = {}
         with Butler.from_config(self.legacy_repo) as legacy_butler:
             # Dropping a vestigial pair is a config-only change; only live
             # removals keep the rejections below.
-            legacy_subtractions = self.droppable_pairs(legacy_butler, legacy_subtractions)
             future_subtractions = self.droppable_pairs(legacy_butler, future_subtractions)
-            if legacy_subtractions:
-                raise ValueError(
-                    f"Unexpected legacy subtractions in {self.legacy_repo}: "
-                    f"{set(legacy_subtractions.keys())}."
-                )
             # future_additions are config overrides in the future repo only
             # that don't affect the (shared) DB definition.
             for base_name, override in future_additions.items():

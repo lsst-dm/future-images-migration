@@ -155,15 +155,18 @@ included), and registers through the legacy member's client — the one
 without overrides for `X`. Hand registration uses the same client. Wild
 repositories that skipped registration remain migratable the same way.
 
-`analyze` classifies a subtracted override pair as a config-only drop (no
-`DatasetTypeMigration` entry, no rename — `apply` only rewrites externals)
-when the definition it protected cannot exist in the shared database: no
-row under any of `X`, `legacy_X`, or `future_X`, or the pair's direction
-is `db_is_future` with row `X` registered and `legacy_X` absent (a family
-that never had the legacy definition, so the base name serves the future
-definition and the pair is a vestige of copied configs). The membership
-check reads the raw `dataset_type` table: the subtracted config's own
-renames would distort `get_dataset_type` visibility.
+`analyze` classifies a subtracted future-side override pair as a
+config-only drop (no `DatasetTypeMigration` entry, no rename — `apply`
+only rewrites externals) when it guards nothing the future member should
+keep: no row under any of `X`, `legacy_X`, or `future_X`, or the pair's
+direction is `db_is_future` with `X` resolvable and `legacy_X` not. The
+membership check probes `get_dataset_type` through the legacy member's
+client; only future-side pairs need classifying, since a legacy member
+acquires its pair only from a completed migration and legacy-side
+subtractions are rejected outright. Where that prober's own renames hide
+`legacy_X` from a probe, the hidden row marks a completed migration —
+and the correct post-arrangement config for the future member is no pair
+at all, so the probe's one blind spot always points at a droppable pair.
 
 `analyze` rejects: incomplete or inconsistent override pairs; live
 legacy-side subtractions; live future-side removals not paired with a

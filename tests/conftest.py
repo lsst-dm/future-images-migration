@@ -49,6 +49,15 @@ BASE_TYPES = {
     "deep_coadd": ("ExposureF", ("patch", "band")),
 }
 
+# The future definitions of the same bases (classes per storage-classes.json),
+# registered explicitly by tests that need a pre- or post-arrangement
+# database; the plain repo_pair DB holds only BASE_TYPES.
+FUTURE_TYPES = {
+    "future_visit_image": ("VisitImage", ("visit", "detector")),
+    "future_difference_image": ("DifferenceImage", ("visit", "detector")),
+    "future_deep_coadd": ("CellCoadd", ("patch", "band")),
+}
+
 # Registry dataset_type rows (as named in the database) before and after
 # the canonical apply: the renames swap base names onto the future
 # definitions and park the legacy definitions under legacy_.
