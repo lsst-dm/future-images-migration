@@ -128,6 +128,7 @@ def test_apply_rejects_two_migrations_on_one_db(ready_group) -> None:
     names_before = dataset_type_names(REPO)
     run = apply_cmd(ready_group)
     assert_rejected(run, "same repository")
+    assert "dp2_prep.sqlite" in run.stderr, run.stderr
     assert "Rewrote" not in run.stdout
     assert dataset_type_names(REPO) == names_before
 

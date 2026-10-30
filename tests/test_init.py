@@ -92,3 +92,14 @@ def test_init_rejects_shared_alias_pair(repo_pair) -> None:
     run = run_migration(repo_pair.tmp_path, "init", TICKET, REPO, LEGACY_VARIANT)
     assert run.returncode == 1, f"expected rejection, got rc={run.returncode}: {run.stdout}"
     assert "is an alias, not an independent repository" in run.stderr, run.stderr
+
+
+def test_init_names_both_databases_on_pair_mismatch(repo_pair) -> None:
+    """A primary pair whose legacy and future externals name different
+    databases is refused with both registry db URLs in the message."""
+    external = repo_pair.external("future")
+    external.write_text(external.read_text().replace("dp2_prep.sqlite", "dp2_prep_other.sqlite"))
+    run = run_migration(repo_pair.tmp_path, "init", TICKET, REPO)
+    assert run.returncode == 1, f"expected rejection, got rc={run.returncode}: {run.stdout}"
+    assert "dp2_prep.sqlite" in run.stderr, run.stderr
+    assert "dp2_prep_other.sqlite" in run.stderr, run.stderr

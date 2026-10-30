@@ -89,6 +89,16 @@ def test_add_variant_rejects_baseline_mismatch(tree) -> None:
     assert_rejected(add_variant(tree), ERR_BASELINE)
 
 
+def test_add_variant_names_both_databases_on_mismatch(tree) -> None:
+    """A variant naming a different registry database is refused, and the
+    refusal names both sides' db file names."""
+    external = tree.variant_external("legacy")
+    external.write_text(external.read_text().replace("dp2_prep.sqlite", "dp2_prep_other.sqlite"))
+    run = add_variant(tree)
+    assert_rejected(run, "dp2_prep.sqlite")
+    assert "dp2_prep_other.sqlite" in run.stderr, run.stderr
+
+
 def test_analyze_variant_dataset_types_once(tree) -> None:
     """With a mirrored variant added, analyze reports each dataset type
     exactly once (dataset_types come from the primary pair only)."""

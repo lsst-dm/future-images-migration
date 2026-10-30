@@ -43,6 +43,11 @@ def repo_alias_key(config: ButlerConfig) -> AliasKey:
     return (config[".registry.db"], config.get(".registry.namespace", None))
 
 
+def format_alias_key(key: AliasKey) -> str:
+    """Describe the actual database identity a config names."""
+    return f"db={key[0]!r}, namespace={key[1]!r}"
+
+
 class FutureStorageClasses(metaclass=Singleton):
     """A singleton that provides a centralized mapping from (base) dataset
     type name to future storage class (as saved to ``storage-class.json``.)
@@ -330,7 +335,11 @@ class RepoMigration(RepoPair):
             if alias_key is None:
                 alias_key = repo_alias_key(external_config)
             elif alias_key != repo_alias_key(external_config):
-                raise ValueError(f"{self.legacy_repo} and {self.future_repo} are not aliases of each other.")
+                raise ValueError(
+                    f"{self.legacy_repo} and {self.future_repo} are not aliases of each other: "
+                    f"{self.legacy_repo} {format_alias_key(alias_key)}, "
+                    f"{self.future_repo} {format_alias_key(repo_alias_key(external_config))}."
+                )
             if old_path.exists():
                 if reset:
                     # Only re-seed if the external config has drifted since
@@ -374,7 +383,12 @@ class RepoMigration(RepoPair):
             if alias_key is None:
                 alias_key = repo_alias_key(base_config)
             if alias_key != repo_alias_key(variant_config):
-                raise ValueError(f"{base} and {variant} are not aliases of each other.")
+                raise ValueError(
+                    f"{base} and {variant} are not aliases of each other: "
+                    f"{base} stored config {format_alias_key(alias_key)}, "
+                    f"{variant} external config "
+                    f"{format_alias_key(repo_alias_key(variant_config))}."
+                )
             variant_config_data = variant_config.configFile.read()
             self.file_path(variant, "old").write_bytes(variant_config_data)
             self.file_path(variant, "new").write_bytes(variant_config_data)
@@ -688,7 +702,8 @@ def check_distinct_alias_keys(migrations: Sequence[RepoMigration]) -> None:
                 raise ValueError(f"{repo} does not share the database of {migration.legacy_repo}.")
         if (prior := owners.get(key)) is not None:
             raise ValueError(
-                f"{migration.legacy_repo} and {prior} are both migrations of the same repository."
+                f"{migration.legacy_repo} and {prior} are both migrations of the same repository "
+                f"({format_alias_key(key)})."
             )
         owners[key] = migration.legacy_repo
 
