@@ -12,20 +12,24 @@ Production implements group identity as the raw ``(db, namespace)`` registry
 pair from ``repo_alias_key``: variants are
 required to live in the same repo directory as their primary (a relocated
 config would break their file-datastore side), so raw comparison is the
-agreed contract.
+default contract. ``add-variant --force`` overrides it per add — the db URL
+only, never the namespace — and ``apply`` does not re-check it.
 """
 
 from __future__ import annotations
 
 from conftest import (
+    APPLIED_NAMES,
     FUTURE_VARIANT,
     LEGACY_VARIANT,
+    PRE_APPLY_NAMES,
     REPO,
     TICKET,
     VARIANTS_KEY,
     assert_rejected,
     canonical_new_state,
     data_text,
+    dataset_type_names,
     mirror_variant_state,
     run_migration,
     set_stored_config,
@@ -42,8 +46,14 @@ ERR_MIRROR = "Mismatch between"
 PAIR_JSON = [{"legacy_repo": LEGACY_VARIANT, "future_repo": FUTURE_VARIANT}]
 
 
-def add_variant(handle, legacy_variant: str = LEGACY_VARIANT, future_variant: str = FUTURE_VARIANT):
-    return run_migration(handle.tmp_path, "add-variant", TICKET, REPO, legacy_variant, future_variant)
+def add_variant(
+    handle,
+    legacy_variant: str = LEGACY_VARIANT,
+    future_variant: str = FUTURE_VARIANT,
+    force: bool = False,
+):
+    args = ["add-variant"] + (["--force"] if force else []) + [TICKET, REPO, legacy_variant, future_variant]
+    return run_migration(handle.tmp_path, *args)
 
 
 def test_add_variant_rejects_unknown_base(repo_pair) -> None:
@@ -84,9 +94,11 @@ def test_add_variant_rejects_collisions(tree) -> None:
 
 def test_add_variant_rejects_baseline_mismatch(tree) -> None:
     """The variant cannot be adopted mid-advance: its external config's
-    overrides must match the primary stored baseline on each side."""
+    overrides must match the primary stored baseline on each side;
+    ``--force`` excuses database differences only, not this."""
     tree.variant_external("legacy").write_text(data_text("legacy-variant-new.yaml"))
     assert_rejected(add_variant(tree), ERR_BASELINE)
+    assert_rejected(add_variant(tree, force=True), ERR_BASELINE)
 
 
 def test_add_variant_names_both_databases_on_mismatch(tree) -> None:
@@ -97,6 +109,38 @@ def test_add_variant_names_both_databases_on_mismatch(tree) -> None:
     run = add_variant(tree)
     assert_rejected(run, "dp2_prep.sqlite")
     assert "dp2_prep_other.sqlite" in run.stderr, run.stderr
+
+
+def test_add_variant_force_allows_same_db_other_url(tree) -> None:
+    """A variant naming the shared database under a sibling symlink's file
+    name has a different raw alias key and is refused by default;
+    ``--force`` admits it, a pre-apply read through the symlinked URL shows
+    the variant shares the primary's database, and after apply the renames
+    resolve identically through both aliases — one physical database was
+    renamed once."""
+    external = tree.variant_external("legacy")
+    external.write_text(external.read_text().replace("dp2_prep.sqlite", "dp2_prep_link.sqlite"))
+    (tree.repo_dir / "dp2_prep_link.sqlite").symlink_to("dp2_prep.sqlite")
+    assert_rejected(add_variant(tree), "dp2_prep_link.sqlite")
+    run = add_variant(tree, force=True)
+    assert run.ok, run.stderr
+    assert run.migration[VARIANTS_KEY] == PAIR_JSON
+    canonical_new_state(tree)
+    mirror_variant_state(tree)
+    assert run_migration(tree.tmp_path, "analyze", TICKET).ok
+    # Read through the symlinked URL: shares the primary's database before
+    # apply rewrites the external configs.
+    assert dataset_type_names(LEGACY_VARIANT) == PRE_APPLY_NAMES
+    assert run_migration(tree.tmp_path, "apply", TICKET).ok
+    assert dataset_type_names(REPO) == dataset_type_names(LEGACY_VARIANT) == APPLIED_NAMES
+
+
+def test_add_variant_force_does_not_excuse_namespace(tree) -> None:
+    """``--force`` relaxes the db URL comparison only: a variant whose
+    registry namespace differs is still refused."""
+    external = tree.variant_external("legacy")
+    external.write_text(external.read_text().replace("registry:\n  db:", "registry:\n  namespace: lsst.dm\n  db:"))
+    assert_rejected(add_variant(tree, force=True), "lsst.dm")
 
 
 def test_analyze_variant_dataset_types_once(tree) -> None:

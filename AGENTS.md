@@ -98,7 +98,10 @@ registry.namespace)` equality. Proxy and symlink indirection means two
 different URL spellings can address one database: raw equality can prove two
 configs _differ_, never that they _match_. Do not build logic that assumes
 unequal URL strings imply distinct databases, unless the caller can override
-that logic in a straightforward, targeted way.
+that logic in a straightforward, targeted way — `add-variant --force` is that
+override, and it relaxes the db URL comparison only (a namespace mismatch is
+never excused). `apply` does not re-check intra-group identity: its drift
+check runs first and catches any config move since the membership checks.
 
 ## Lifecycle and the script's guarantees
 
@@ -133,8 +136,8 @@ rolls back alone.
 Guarantees the script establishes and checks it assumes:
 
 - `apply` mutates nothing unless every check passed (externals match their
-  stored `old` copies for every group member, each selected migration owns a
-  distinct database identity, a fresh in-memory analysis, and cross-repo
+  stored `old` copies for every group member, no two selected migrations
+  name the same database identity, a fresh in-memory analysis, and cross-repo
   agreement on future storage classes). A failure in migration #k leaves
   #1..#k-1 committed: apply across databases is not atomic; sequence
   independent groups with `--repo`.

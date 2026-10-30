@@ -358,7 +358,9 @@ class RepoMigration(RepoPair):
             new_path.write_bytes(external_config_data)
         return alias_key
 
-    def add_variant(self, legacy_variant: str, future_variant: str) -> None:
+    def add_variant(
+        self, legacy_variant: str, future_variant: str, *, force: bool = False
+    ) -> None:
         """Add a variant pair to this change.
 
         Parameters
@@ -367,6 +369,11 @@ class RepoMigration(RepoPair):
             Legacy member of the variant pair.
         future_varian
             Future member of the variant pair.
+        force
+            Accept a variant whose registry db URL differs from the
+            primary's — a different spelling (proxy or symlink path) of one
+            database the tool cannot prove equal.  Namespace mismatches are
+            never excused.
         """
         all_repos = set(self.iter_all_repos())
         new_pair = RepoPair(legacy_repo=legacy_variant, future_repo=future_variant)
@@ -380,14 +387,22 @@ class RepoMigration(RepoPair):
             variant_overrides = self.extract_overrides(variant_config)
             if base_overrides != variant_overrides:
                 raise ValueError(f"Pre-migration overrides for {variant} do not match {base}.")
+            variant_key = repo_alias_key(variant_config)
             if alias_key is None:
                 alias_key = repo_alias_key(base_config)
-            if alias_key != repo_alias_key(variant_config):
+            mismatch = (
+                f"{base} stored config {format_alias_key(alias_key)}, "
+                f"{variant} external config {format_alias_key(variant_key)}."
+            )
+            if alias_key[1] != variant_key[1]:
                 raise ValueError(
-                    f"{base} and {variant} are not aliases of each other: "
-                    f"{base} stored config {format_alias_key(alias_key)}, "
-                    f"{variant} external config "
-                    f"{format_alias_key(repo_alias_key(variant_config))}."
+                    f"{base} and {variant} use different database namespaces: {mismatch}"
+                )
+            if alias_key[0] != variant_key[0]:
+                if not force:
+                    raise ValueError(f"{base} and {variant} are not aliases of each other: {mismatch}")
+                logging.warning(
+                    f"--force accepts {variant} naming its database under another URL: {mismatch}"
                 )
             variant_config_data = variant_config.configFile.read()
             self.file_path(variant, "old").write_bytes(variant_config_data)
@@ -692,14 +707,16 @@ class RepoMigration(RepoPair):
 
 
 def check_distinct_alias_keys(migrations: Sequence[RepoMigration]) -> None:
-    """Ensure the selected migrations describe distinct repositories."""
+    """Ensure no two selected migrations migrate the same repository.
+
+    Intra-group identity is not re-checked here: ``init`` and ``add-variant``
+    enforce it when the migration is written (``add-variant --force`` being
+    the sanctioned override), and ``apply``'s drift check runs first, so a
+    member whose config moved since then fails there with a clearer message.
+    """
     owners: dict[AliasKey, str] = {}
     for migration in migrations:
-        repos = list(migration.iter_all_repos())
-        key = repo_alias_key(ButlerConfig(repos[0]))
-        for repo in repos[1:]:
-            if repo_alias_key(ButlerConfig(repo)) != key:
-                raise ValueError(f"{repo} does not share the database of {migration.legacy_repo}.")
+        key = repo_alias_key(ButlerConfig(migration.legacy_repo))
         if (prior := owners.get(key)) is not None:
             raise ValueError(
                 f"{migration.legacy_repo} and {prior} are both migrations of the same repository "
@@ -904,12 +921,19 @@ def init(ticket: str, repos: Iterable[str], reset: bool = False) -> None:
 @click.argument("legacy_base", type=str, help="Legacy base repo that already has a variant.")
 @click.argument("legacy_variant", type=str, help="Legacy variant repo to associate.")
 @click.argument("future_variant", type=str, help="Future variant repo to associate.")
-def add_variant(ticket: str, legacy_base: str, legacy_variant: str, future_variant: str) -> None:
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Accept a variant naming the shared database under another URL spelling.",
+)
+def add_variant(
+    ticket: str, legacy_base: str, legacy_variant: str, future_variant: str, *, force: bool = False
+) -> None:
     """Mark a pair of legacy/future butler repositories as a variant of one
     already included in this migration.
     """
     migration = RepoMigration.read(RepoMigration.root(ticket) / legacy_base / "migration.json")
-    migration.add_variant(legacy_variant, future_variant)
+    migration.add_variant(legacy_variant, future_variant, force=force)
     migration.write()
 
 
