@@ -1,0 +1,12 @@
+{
+  "legacy_repo": "embargo",
+  "future_repo": "embargo_future",
+  "ticket": "DM-56884a",
+  "dataset_types": {},
+  "variants": [
+    {
+      "legacy_repo": "embargo_readonly",
+      "future_repo": "embargo_future_readonly"
+    }
+  ]
+}

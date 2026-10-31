@@ -1,0 +1,30 @@
+datastore:
+  cls: lsst.daf.butler.datastores.fileDatastore.FileDatastore
+  records:
+    table: file_datastore_records
+  root: <butlerRoot>
+  formatters:
+    preliminary_visit_image:
+      formatter: lsst.obs.base.formatters.fitsExposure.FitsExposureFormatter
+      parameters:
+        recipe: lossy16
+    template_detector:
+      formatter: lsst.obs.base.formatters.fitsExposure.FitsExposureFormatter
+      parameters:
+        recipe: lossy16
+    difference_image:
+      formatter: lsst.obs.base.formatters.fitsExposure.FitsExposureFormatter
+      parameters:
+        recipe: lossy16
+registry:
+  db: postgresql://usdf-butler-embargo-db-tx.sdf.slac.stanford.edu:5432/lsstdb1
+  managers:
+    attributes: lsst.daf.butler.registry.attributes.DefaultButlerAttributeManager
+    collections: lsst.daf.butler.registry.collections.synthIntKey.SynthIntKeyCollectionManager
+    datasets: lsst.daf.butler.registry.datasets.byDimensions.ByDimensionsDatasetRecordStorageManagerUUID
+    datastores: lsst.daf.butler.registry.bridge.monolithic.MonolithicDatastoreRegistryBridgeManager
+    dimensions: lsst.daf.butler.registry.dimensions.static.StaticDimensionRecordStorageManager
+    obscore:
+      cls: lsst.daf.butler.registry.obscore._manager.ObsCoreLiveTableManager
+    opaque: lsst.daf.butler.registry.opaque.ByNameOpaqueTableStorageManager
+  namespace: embargo

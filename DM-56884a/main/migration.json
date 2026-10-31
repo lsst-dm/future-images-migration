@@ -1,0 +1,12 @@
+{
+  "legacy_repo": "main",
+  "future_repo": "main_future",
+  "ticket": "DM-56884a",
+  "dataset_types": {},
+  "variants": [
+    {
+      "legacy_repo": "main+sasquatch_dev",
+      "future_repo": "main_future+sasquatch_dev"
+    }
+  ]
+}
