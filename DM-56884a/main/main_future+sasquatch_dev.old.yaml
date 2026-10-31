@@ -1,0 +1,51 @@
+datastore:
+  cls: lsst.daf.butler.datastores.chainedDatastore.ChainedDatastore
+  datastores:
+    - cls: lsst.daf.butler.datastores.fileDatastore.FileDatastore
+      records:
+        table: file_datastore_records
+      root: <butlerRoot>
+    - cls: lsst.analysis.tools.interfaces.datastore.SasquatchDatastore
+      restProxyUrl: https://usdf-rsp-dev.slac.stanford.edu/sasquatch-rest-proxy
+      namespace: lsst.dm
+registry:
+  db: postgresql://usdf-butler.slac.stanford.edu:5432/lsstdb1
+  managers:
+    collections: lsst.daf.butler.registry.collections.nameKey.NameKeyCollectionManager
+    datasets:
+      cls: lsst.daf.butler.registry.datasets.byDimensions.ByDimensionsDatasetRecordStorageManagerUUID
+      config:
+        overrides:
+          preliminary_visit_image:
+            rename: legacy_preliminary_visit_image
+          future_preliminary_visit_image:
+            rename: preliminary_visit_image
+          template_detector:
+            rename: legacy_template_detector
+          future_template_detector:
+            rename: template_detector
+          template_matched:
+            rename: legacy_template_matched
+          future_template_matched:
+            rename: template_matched
+          difference_image_predetection:
+            rename: legacy_difference_image_predetection
+          future_difference_image_predetection:
+            rename: difference_image_predetection
+          difference_image:
+            rename: legacy_difference_image
+          future_difference_image:
+            rename: difference_image
+          difference_kernel:
+            rename: legacy_difference_kernel
+          future_difference_kernel:
+            rename: difference_kernel
+          visit_image:
+            rename: legacy_visit_image
+          future_visit_image:
+            rename: visit_image
+    attributes: lsst.daf.butler.registry.attributes.DefaultButlerAttributeManager
+    datastores: lsst.daf.butler.registry.bridge.monolithic.MonolithicDatastoreRegistryBridgeManager
+    dimensions: lsst.daf.butler.registry.dimensions.static.StaticDimensionRecordStorageManager
+    opaque: lsst.daf.butler.registry.opaque.ByNameOpaqueTableStorageManager
+  namespace: main_20210215
