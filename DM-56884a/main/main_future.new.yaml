@@ -47,6 +47,10 @@ registry:
             rename: legacy_deep_coadd
           future_deep_coadd:
             rename: deep_coadd
+          source2:
+            rename: source
+          source:
+            rename: source_v1
     attributes: lsst.daf.butler.registry.attributes.DefaultButlerAttributeManager
     datastores: lsst.daf.butler.registry.bridge.monolithic.MonolithicDatastoreRegistryBridgeManager
     dimensions: lsst.daf.butler.registry.dimensions.static.StaticDimensionRecordStorageManager
