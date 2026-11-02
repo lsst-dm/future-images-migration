@@ -44,6 +44,10 @@ registry:
             rename: legacy_visit_image
           future_visit_image:
             rename: visit_image
+          template_coadd:
+            rename: legacy_template_coadd
+          future_template_coadd:
+            rename: template_coadd
     attributes: lsst.daf.butler.registry.attributes.DefaultButlerAttributeManager
     datastores: lsst.daf.butler.registry.bridge.monolithic.MonolithicDatastoreRegistryBridgeManager
     dimensions: lsst.daf.butler.registry.dimensions.static.StaticDimensionRecordStorageManager
