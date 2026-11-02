@@ -43,6 +43,10 @@ registry:
             rename: legacy_template_coadd
           future_template_coadd:
             rename: template_coadd
+          deep_coadd:
+            rename: legacy_deep_coadd
+          future_deep_coadd:
+            rename: deep_coadd
     attributes: lsst.daf.butler.registry.attributes.DefaultButlerAttributeManager
     datastores: lsst.daf.butler.registry.bridge.monolithic.MonolithicDatastoreRegistryBridgeManager
     dimensions: lsst.daf.butler.registry.dimensions.static.StaticDimensionRecordStorageManager
