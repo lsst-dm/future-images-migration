@@ -2,7 +2,20 @@
   "legacy_repo": "main",
   "future_repo": "main_future",
   "ticket": "DM-56884a",
-  "dataset_types": {},
+  "dataset_types": {
+    "deep_coadd": {
+      "legacy_storage_class": "ExposureF",
+      "future_storage_class": "CellCoadd",
+      "is_registered": false,
+      "is_db_migration": false
+    },
+    "template_coadd": {
+      "legacy_storage_class": "ExposureF",
+      "future_storage_class": "CellCoadd",
+      "is_registered": false,
+      "is_db_migration": false
+    }
+  },
   "variants": [
     {
       "legacy_repo": "main+sasquatch_dev",
