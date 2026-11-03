@@ -12,6 +12,10 @@ registry:
       cls: lsst.daf.butler.registry.datasets.byDimensions.ByDimensionsDatasetRecordStorageManagerUUID
       config:
         overrides:
+          legacy_preliminary_visit_image:
+            rename: preliminary_visit_image
+          preliminary_visit_image:
+            rename: future_preliminary_visit_image
           legacy_visit_image:
             rename: visit_image
           visit_image:
@@ -24,6 +28,26 @@ registry:
             rename: deep_coadd
           deep_coadd:
             rename: future_deep_coadd
+          legacy_deconvolved_deep_coadd:
+            rename: deconvolved_deep_coadd
+          deconvolved_deep_coadd:
+            rename: future_deconvolved_deep_coadd
+          legacy_template_coadd:
+            rename: template_coadd
+          template_coadd:
+            rename: future_template_coadd
+          legacy_template_detector:
+            rename: template_detector
+          template_detector:
+            rename: future_template_detector
+          legacy_template_matched:
+            rename: template_matched
+          template_matched:
+            rename: future_template_matched
+          legacy_difference_image_predetection:
+            rename: difference_image_predetection
+          difference_image_predetection:
+            rename: future_difference_image_predetection
     datastores: lsst.daf.butler.registry.bridge.monolithic.MonolithicDatastoreRegistryBridgeManager
     dimensions: lsst.daf.butler.registry.dimensions.static.StaticDimensionRecordStorageManager
     opaque: lsst.daf.butler.registry.opaque.ByNameOpaqueTableStorageManager

@@ -13,18 +13,7 @@ registry:
   managers:
     attributes: lsst.daf.butler.registry.attributes.DefaultButlerAttributeManager
     collections: lsst.daf.butler.registry.collections.synthIntKey.SynthIntKeyCollectionManager
-    datasets:
-      cls: lsst.daf.butler.registry.datasets.byDimensions.ByDimensionsDatasetRecordStorageManagerUUID
-      config:
-        overrides:
-          deconvolved_deep_coadd:
-            rename: legacy_deconvolved_deep_coadd
-          future_deconvolved_deep_coadd:
-            rename: deconvolved_deep_coadd
-          template_coadd:
-            rename: legacy_template_coadd
-          future_template_coadd:
-            rename: template_coadd
+    datasets: lsst.daf.butler.registry.datasets.byDimensions.ByDimensionsDatasetRecordStorageManagerUUID
     datastores: lsst.daf.butler.registry.bridge.monolithic.MonolithicDatastoreRegistryBridgeManager
     dimensions: lsst.daf.butler.registry.dimensions.static.StaticDimensionRecordStorageManager
     opaque: lsst.daf.butler.registry.opaque.ByNameOpaqueTableStorageManager
