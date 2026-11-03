@@ -2,7 +2,44 @@
   "legacy_repo": "dp2_prep",
   "future_repo": "dp2_prep_future",
   "ticket": "DM-56884b",
-  "dataset_types": {},
+  "dataset_types": {
+    "template_matched": {
+      "legacy_storage_class": "ExposureF",
+      "future_storage_class": "DifferenceImage",
+      "is_registered": false,
+      "is_db_migration": true
+    },
+    "template_detector": {
+      "legacy_storage_class": "ExposureF",
+      "future_storage_class": "DifferenceImage",
+      "is_registered": false,
+      "is_db_migration": true
+    },
+    "deconvolved_deep_coadd": {
+      "legacy_storage_class": "ExposureF",
+      "future_storage_class": "MaskedImageV2",
+      "is_registered": true,
+      "is_db_migration": true
+    },
+    "preliminary_visit_image": {
+      "legacy_storage_class": "ExposureF",
+      "future_storage_class": "VisitImage",
+      "is_registered": false,
+      "is_db_migration": true
+    },
+    "difference_image_predetection": {
+      "legacy_storage_class": "ExposureF",
+      "future_storage_class": "DifferenceImage",
+      "is_registered": false,
+      "is_db_migration": true
+    },
+    "template_coadd": {
+      "legacy_storage_class": "ExposureF",
+      "future_storage_class": "CellCoadd",
+      "is_registered": true,
+      "is_db_migration": true
+    }
+  },
   "variants": [
     {
       "legacy_repo": "dp2_prep+sasquatch_dev",
